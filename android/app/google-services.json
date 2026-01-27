@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "827267712942",
+    "firebase_url": "https://jaldharan-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "jaldharan",
+    "storage_bucket": "jaldharan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:827267712942:android:6e8383c977196800212a3f",
+        "android_client_info": {
+          "package_name": "com.litsquad.projects.jal_dharan"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "827267712942-mfucv08jbv18luputa3q90ddh93mulpd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.litsquad.projects.jal_dharan",
+            "certificate_hash": "d51b24db5e0b1a0fa96793b6615026afde262b81"
+          }
+        },
+        {
+          "client_id": "827267712942-53uvl9pah8pd5mq2cn7af29ncfeq8cqs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0pELWzFLIf1j38Ghrv9o0OoXZH1gWZ6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "827267712942-53uvl9pah8pd5mq2cn7af29ncfeq8cqs.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "827267712942-4c8ttv07m5u74kt8tmc52tv823abc0me.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.litsquad.projects.jalDharan"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,280 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
+
+class AuthService {
+  static final AuthService _instance = AuthService._internal();
+
+  factory AuthService() {
+    return _instance;
+  }
+
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
+
+  AuthService._internal();
+
+  // Stream to listen to authentication state changes
+  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+
+  // Get current user
+  User? get currentUser => _firebaseAuth.currentUser;
+
+  // Email and Password Sign Up
+  Future<UserCredential> signUpWithEmail(String email, String password) async {
+    try {
+      return await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Email and Password Sign In
+  Future<UserCredential> signInWithEmail(String email, String password) async {
+    try {
+      return await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Google Sign In
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      _debugPrintSignInInfo();
+
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      // Obtain the auth details from the request
+      if (googleUser == null) {
+        if (kDebugMode) {
+          print('User cancelled Google Sign In');
+        }
+        return null; // User cancelled the sign-in
+      }
+
+      if (kDebugMode) {
+        print('Google user signed in: ${googleUser.email}');
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Validate credentials
+      if (googleAuth.accessToken == null && googleAuth.idToken == null) {
+        throw 'Failed to obtain authentication tokens from Google. '
+            'Check your SHA1 certificate hash in Firebase Console.';
+      }
+
+      if (kDebugMode) {
+        print('Access Token: ${googleAuth.accessToken != null ? 'Present' : 'Null'}');
+        print('ID Token: ${googleAuth.idToken != null ? 'Present' : 'Null'}');
+      }
+
+      // Create a new credential
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the credential
+      final userCred = await _firebaseAuth.signInWithCredential(credential);
+
+      if (kDebugMode) {
+        print('Successfully signed in to Firebase: ${userCred.user?.email}');
+      }
+
+      return userCred;
+    } on FirebaseAuthException catch (e) {
+      if (kDebugMode) {
+        print('FirebaseAuthException: ${e.code} - ${e.message}');
+      }
+      throw _handleAuthException(e);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Google Sign In Error: $e');
+      }
+
+      // Check if it's a platform exception with specific error codes
+      if (e.toString().contains('sign_in_failed')) {
+        throw 'Google Sign In failed. This usually means:\n'
+            '1. Your SHA1 certificate hash doesn\'t match Firebase Console\n'
+            '2. Your package name doesn\'t match (com.litsquad.projects.jal_dharan)\n'
+            '3. Run: ./gradlew signingReport to get your SHA1 hash\n'
+            'Then update it in Firebase Console under Project Settings.';
+      }
+
+      throw 'Failed to sign in with Google: $e';
+    }
+  }
+
+  // Apple Sign In (iOS specific, available on iOS 13+)
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      // Only available on iOS
+      if (!Platform.isIOS) {
+        throw 'Apple Sign-In is only available on iOS';
+      }
+
+      // Generate nonce for security
+      final rawNonce = _generateNonce();
+      final bytes = utf8.encode(rawNonce);
+      final digest = sha256.convert(bytes);
+      final hashNonce = base64Url.encode(digest.bytes).replaceAll('=', '');
+
+      // Get Apple ID credential from native iOS
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [],
+        nonce: hashNonce,
+      );
+
+      // Create Firebase credential with the Apple credential
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      // Sign in to Firebase with the credential
+      return await _firebaseAuth.signInWithCredential(oauthCredential);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw 'Failed to sign in with Apple: $e';
+    }
+  }
+
+  // Password Reset
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Update User Profile
+  Future<void> updateUserProfile({
+    String? displayName,
+    String? photoURL,
+  }) async {
+    try {
+      if (displayName != null) {
+        await _firebaseAuth.currentUser?.updateDisplayName(displayName);
+      }
+      if (photoURL != null) {
+        await _firebaseAuth.currentUser?.updatePhotoURL(photoURL);
+      }
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Sign Out
+  Future<void> signOut() async {
+    try {
+      // Sign out from Firebase
+      await _firebaseAuth.signOut();
+
+      // Also sign out from Google if user was signed in with Google
+      await _googleSignIn.signOut();
+
+      // Note: Apple Sign-In doesn't have a sign-out method,
+      // the session is managed by iOS
+    } catch (e) {
+      throw 'Failed to sign out: $e';
+    }
+  }
+
+  // Delete Account
+  Future<void> deleteAccount() async {
+    try {
+      await _firebaseAuth.currentUser?.delete();
+      await _googleSignIn.signOut();
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Verify Email
+  Future<void> sendEmailVerification() async {
+    try {
+      await _firebaseAuth.currentUser?.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
+  // Check if email is verified
+  bool isEmailVerified() {
+    return _firebaseAuth.currentUser?.emailVerified ?? false;
+  }
+
+  // Debug: Print configuration info for troubleshooting
+  void _debugPrintSignInInfo() {
+    if (kDebugMode) {
+      print('=== Google Sign In Debug Info ===');
+      print('Platform: ${Platform.isAndroid ? 'Android' : 'iOS'}');
+      print('Is signed in: ${_googleSignIn.currentUser != null}');
+      print('Current account: ${_googleSignIn.currentUser?.email ?? 'None'}');
+      print('Firebase user: ${_firebaseAuth.currentUser?.email ?? 'None'}');
+      print('================================');
+    }
+  }
+
+  // Helper method to handle Firebase Auth Exceptions
+  String _handleAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'weak-password':
+        return 'The password provided is too weak.';
+      case 'email-already-in-use':
+        return 'An account already exists for that email.';
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      case 'operation-not-allowed':
+        return 'Operation not allowed. Please contact support.';
+      case 'user-disabled':
+        return 'The user account has been disabled.';
+      case 'user-not-found':
+        return 'No account found for that email.';
+      case 'wrong-password':
+        return 'The password is incorrect.';
+      case 'invalid-credential':
+        return 'The credentials provided are invalid.';
+      case 'too-many-requests':
+        return 'Too many failed login attempts. Please try again later.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with a different sign-in method.';
+      case 'credential-already-in-use':
+        return 'This credential is already in use by another account.';
+      default:
+        return 'An error occurred: ${e.message}';
+    }
+  }
+
+  // Generate Nonce for Apple Sign-In
+  String _generateNonce() {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    final values = List<int>.generate(32, (i) => charset.codeUnitAt(random.nextInt(charset.length)));
+    return String.fromCharCodes(values);
+  }
+}
+

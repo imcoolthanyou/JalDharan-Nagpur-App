@@ -1,0 +1,109 @@
+════════════════════════════════════════════════════════════════════════════════
+                    ⚡ QUICK START - API INTEGRATION ⚡
+════════════════════════════════════════════════════════════════════════════════
+
+WHAT YOU NEED TO DO NOW:
+═════════════════════════
+
+1️⃣  UPDATE THE BASE URL IN dashboard_api_service.dart
+────────────────────────────────────────────────────
+
+File: lib/core/services/dashboard_api_service.dart
+Line: 7
+
+CHANGE THIS:
+  static const String _baseUrl = 'http://localhost:8000';
+
+TO THIS (with your backend IP):
+  static const String _baseUrl = 'http://YOUR_BACKEND_IP:8000';
+
+Example:
+  static const String _baseUrl = 'http://192.168.0.100:8000';
+
+2️⃣  RUN FLUTTER PUB GET
+────────────────────────
+
+flutter pub get
+
+3️⃣  RUN THE APP
+────────────────
+
+flutter run
+
+4️⃣  CHECK THE LOGS
+───────────────────
+
+Watch for these success messages:
+✅ "Dashboard API Error:" will NOT appear if successful
+✅ Data should load within 2 seconds
+✅ "Current Depth: 35", "Power (kW): 1.2", etc. should display
+
+════════════════════════════════════════════════════════════════════════════════
+
+THE EXACT ENDPOINT YOUR APP WILL CALL:
+═══════════════════════════════════════
+
+GET http://<YOUR_IP>:8000/mobile/dashboard?user_id=test_user
+
+Example:
+GET http://192.168.0.100:8000/mobile/dashboard?user_id=test_user
+
+════════════════════════════════════════════════════════════════════════════════
+
+EXPECTED BEHAVIOR:
+═══════════════════
+
+🔄 App starts → Shows mock data
+   ↓
+🌐 API call is made (in background)
+   ↓
+✅ If successful → Real data replaces mock data
+   ↓
+❌ If failed → Error snackbar with Retry button
+
+════════════════════════════════════════════════════════════════════════════════
+
+TROUBLESHOOTING:
+═════════════════
+
+Problem: "Network error: Unable to connect to server"
+└─ Solution: Check IP address is correct, backend is running, same network
+
+Problem: "Request timeout: Could not reach server"
+└─ Solution: Check network connection, increase timeout in dashboard_api_service.dart
+
+Problem: "Invalid response format"
+└─ Solution: Check backend is returning proper JSON matching the structure
+
+Problem: Mock data still shows after 5 seconds
+└─ Solution: Check Flutter console for error message, tap Retry button
+
+════════════════════════════════════════════════════════════════════════════════
+
+FILES MODIFIED:
+════════════════
+
+1. lib/core/services/dashboard_api_service.dart ← CHANGE IP HERE
+2. lib/presentation/screens/home/home_screen.dart
+3. pubspec.yaml
+
+════════════════════════════════════════════════════════════════════════════════
+
+YOUR BACKEND IP:
+═════════════════
+
+If you're on the same machine:
+  http://localhost:8000
+
+If backend is on another machine on your network:
+  http://192.168.x.x:8000
+  (Replace x.x with your actual IP)
+
+If using Android Emulator:
+  http://10.0.2.2:8000
+
+════════════════════════════════════════════════════════════════════════════════
+
+That's it! Your app is ready to use the real API! 🚀
+
+════════════════════════════════════════════════════════════════════════════════

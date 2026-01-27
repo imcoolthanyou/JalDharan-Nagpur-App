@@ -1,0 +1,331 @@
+════════════════════════════════════════════════════════════════════════════════
+              ✅ CONTINUOUS API CALLING IMPLEMENTED ✅
+                 HomeScreen & AnalyticsScreen Auto-Refresh
+════════════════════════════════════════════════════════════════════════════════
+
+WHAT WAS UPDATED:
+═════════════════
+
+✅ HomeScreen (Already had this)
+   - Fetches API data every 10 seconds continuously
+   - Starts timer in initState()
+   - Cancels timer in dispose()
+   - Shows loading state during fetch
+
+✅ AnalyticsScreen (Just updated)
+   - Now fetches API data every 10 seconds continuously
+   - Starts timer in initState()
+   - Cancels timer in dispose()
+   - Updates graph with latest predictions
+   - Shows loading state during fetch
+
+════════════════════════════════════════════════════════════════════════════════
+
+HOW IT WORKS:
+══════════════
+
+Timeline for Each Screen:
+──────────────────────────
+
+0 sec:    Screen opens
+          └─ initState() runs
+          └─ Loads initial data (from parameter or mock)
+          └─ Starts auto-refresh timer
+          └─ UI displayed immediately
+
+1-2 sec:  First API call completes
+          └─ Fresh data from server arrives
+          └─ UI updates with real data
+
+10 sec:   Timer triggers automatically ⏱️
+          └─ API called again
+          └─ New data fetched
+
+11-12 sec: API response received
+          └─ Graph updates
+          └─ Predictions refresh
+          └─ UI rebuilds with latest values
+
+20 sec:   Timer triggers again ⏱️
+          └─ Another API call
+          └─ Cycle continues...
+
+...continues until user navigates away
+
+User navigates away:
+          └─ dispose() called
+          └─ Timer cancelled
+          └─ No more API calls
+          └─ Resources cleaned up
+
+════════════════════════════════════════════════════════════════════════════════
+
+HOMESCREEN AUTO-REFRESH:
+═════════════════════════
+
+File: lib/presentation/screens/home/home_screen.dart
+
+Features:
+  ✓ 10-second refresh interval
+  ✓ Smart data change detection
+  ✓ Only rebuilds UI if values changed
+  ✓ Shows loading state
+  ✓ Error handling with retry
+
+How it works:
+  1. initState() → _startAutoRefresh()
+  2. Timer.periodic() → Triggers every 10 seconds
+  3. _fetchDashboardData() → Calls API
+  4. _hasDataChanged() → Checks if values different
+  5. setState() → Updates UI only if needed
+  6. dispose() → Cancels timer
+
+════════════════════════════════════════════════════════════════════════════════
+
+ANALYTICSSCREEN AUTO-REFRESH:
+══════════════════════════════
+
+File: lib/presentation/screens/analytics/analytics_screen.dart
+
+Features:
+  ✓ 10-second refresh interval (same as HomeScreen)
+  ✓ Fetches latest groundwater predictions
+  ✓ Updates graph visualization
+  ✓ Shows loading state
+  ✓ Error handling
+
+How it works:
+  1. initState() → _startAutoRefresh()
+  2. Timer.periodic() → Triggers every 10 seconds
+  3. _fetchLatestData() → Calls API
+  4. _createGroundwaterTrendFromData() → Parses new predictions
+  5. setState() → Updates graph with latest data
+  6. dispose() → Cancels timer
+
+════════════════════════════════════════════════════════════════════════════════
+
+CODE STRUCTURE:
+════════════════
+
+HomeScreen Pattern:
+───────────────────
+
+  class _HomeScreenState extends State<HomeScreen> {
+    late Timer _autoRefreshTimer;
+    static const Duration _refreshInterval = Duration(seconds: 10);
+
+    @override
+    void initState() {
+      super.initState();
+      _startAutoRefresh();
+    }
+
+    void _startAutoRefresh() {
+      _autoRefreshTimer = Timer.periodic(_refreshInterval, (_) {
+        if (mounted) {
+          _fetchDashboardData();
+        }
+      });
+    }
+
+    @override
+    void dispose() {
+      _autoRefreshTimer.cancel();
+      super.dispose();
+    }
+  }
+
+AnalyticsScreen Pattern (Same):
+────────────────────────────────
+
+  class _AnalyticsScreenState extends State<AnalyticsScreen> {
+    late Timer _autoRefreshTimer;
+    static const Duration _refreshInterval = Duration(seconds: 10);
+
+    @override
+    void initState() {
+      super.initState();
+      _startAutoRefresh();
+    }
+
+    void _startAutoRefresh() {
+      _autoRefreshTimer = Timer.periodic(_refreshInterval, (_) {
+        if (mounted) {
+          _fetchLatestData();
+        }
+      });
+    }
+
+    @override
+    void dispose() {
+      _autoRefreshTimer.cancel();
+      super.dispose();
+    }
+  }
+
+════════════════════════════════════════════════════════════════════════════════
+
+API CALLS FREQUENCY:
+═════════════════════
+
+HomeScreen:
+  └─ API calls every 10 seconds
+  └─ Endpoint: /mobile/dashboard
+  └─ Response: Current sensor data + predictions
+
+AnalyticsScreen:
+  └─ API calls every 10 seconds
+  └─ Endpoint: /mobile/dashboard (same)
+  └─ Uses: groundwater_trend predictions
+  └─ Displays: 30-day forecast graph
+
+Total API Load:
+  └─ If both screens open simultaneously:
+     • 2 API calls per 10 seconds (HomeScreen + AnalyticsScreen)
+     • But typically only one visible screen at a time
+     • When navigating away, timer cancels → No calls
+
+════════════════════════════════════════════════════════════════════════════════
+
+WHAT GETS UPDATED:
+═══════════════════
+
+HomeScreen Updates Every 10 Seconds:
+────────────────────────────────────
+  ✓ Current water depth
+  ✓ Flow rate
+  ✓ TDS level
+  ✓ pH level
+  ✓ Power consumption (kW)
+  ✓ Pump status
+  ✓ Water stress level
+  ✓ 7/14/30-day predictions
+  ✓ Water quality score
+  ✓ Last updated timestamp
+
+AnalyticsScreen Updates Every 10 Seconds:
+──────────────────────────────────────────
+  ✓ Current depth value
+  ✓ 7-day predicted depth
+  ✓ 14-day predicted depth
+  ✓ 30-day predicted depth
+  ✓ Trend direction (falling/rising/stable)
+  ✓ Water stress level
+  ✓ Graph visualization
+  ✓ AI analysis card data
+
+════════════════════════════════════════════════════════════════════════════════
+
+EFFICIENCY:
+════════════
+
+Smart Update Detection:
+
+HomeScreen uses _hasDataChanged() to check if values different:
+  ✓ Only rebuilds if new values received
+  ✓ No unnecessary UI updates
+  ✓ Smooth, flicker-free experience
+
+AnalyticsScreen updates graph automatically:
+  ✓ Processes latest API response
+  ✓ Creates new TrendData
+  ✓ Graph re-renders smoothly
+  ✓ Loading state manages transitions
+
+════════════════════════════════════════════════════════════════════════════════
+
+CONFIGURATION:
+════════════════
+
+Change refresh interval (default: 10 seconds):
+
+HomeScreen:
+  static const Duration _refreshInterval = Duration(seconds: 10);
+
+  → Change 10 to your desired seconds:
+  → Duration(seconds: 5) for 5-second refresh
+  → Duration(seconds: 30) for 30-second refresh
+
+AnalyticsScreen:
+  static const Duration _refreshInterval = Duration(seconds: 10);
+
+  → Same pattern, change to match your needs
+
+════════════════════════════════════════════════════════════════════════════════
+
+MEMORY SAFETY:
+═══════════════
+
+✅ Timer is always cancelled in dispose()
+   → No memory leaks
+   → Resources properly cleaned up
+
+✅ mounted check before setState()
+   → Prevents "setState after dispose" errors
+
+✅ If user navigates away:
+   → dispose() immediately cancels timer
+   → No more API calls
+   → Battery efficient
+
+════════════════════════════════════════════════════════════════════════════════
+
+TESTING:
+═════════
+
+How to verify continuous API calling:
+
+1. Open HomeScreen
+   └─ Watch "Last Updated" timestamp
+   └─ Should update every 10 seconds
+   └─ Values should change if backend data changes
+
+2. Open AnalyticsScreen
+   └─ Watch prediction graph
+   └─ Should refresh every 10 seconds
+   └─ Values should update smoothly
+
+3. Check backend logs
+   └─ Should see API calls every 10 seconds
+   └─ One from HomeScreen + one from AnalyticsScreen (if both open)
+
+4. Check network requests
+   └─ In DevTools network tab
+   └─ See periodic POST requests to /mobile/dashboard
+
+════════════════════════════════════════════════════════════════════════════════
+
+ERROR HANDLING:
+════════════════
+
+If API fails during refresh:
+
+HomeScreen:
+  ✓ Shows snackbar with error message
+  ✓ User can tap "Retry"
+  ✓ Timer continues (will try again in 10 seconds)
+  ✓ Previous data stays visible
+
+AnalyticsScreen:
+  ✓ Silently logs error to console
+  ✓ Previous graph stays visible
+  ✓ Timer continues (will try again in 10 seconds)
+  ✓ No error UI (assuming predictions are stable)
+
+════════════════════════════════════════════════════════════════════════════════
+
+SUMMARY:
+═════════
+
+✅ HomeScreen: Continuously fetches data every 10 seconds
+✅ AnalyticsScreen: Continuously fetches data every 10 seconds
+✅ Both use same API endpoint: /mobile/dashboard
+✅ Both have proper memory management
+✅ Both have error handling
+✅ Both cancel timers on navigate away
+✅ Real-time data updates with smart change detection
+✅ Smooth, efficient, production-ready
+
+Your app now has real-time data streaming! 🚀
+
+════════════════════════════════════════════════════════════════════════════════

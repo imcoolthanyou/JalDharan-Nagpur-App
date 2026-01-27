@@ -1,0 +1,229 @@
+════════════════════════════════════════════════════════════════════════════════
+                        ✅ BUG FIX: setState() After Dispose
+════════════════════════════════════════════════════════════════════════════════
+
+ISSUE:
+══════
+
+E/flutter: Unhandled Exception: setState() called after dispose():
+  _HomeScreenState#531b8(lifecycle state: defunct, not mounted)
+
+CAUSE:
+══════
+
+The `_fetchDashboardData()` method was calling `setState()` after the API
+response returned, even if the HomeScreen widget had been disposed/removed
+from the widget tree.
+
+Timeline:
+1. User opens HomeScreen
+2. _fetchDashboardData() starts API call
+3. User navigates away from HomeScreen
+4. Widget is disposed
+5. API response arrives
+6. setState() is called on disposed widget ❌ ERROR
+
+SOLUTION:
+═════════
+
+Check the `mounted` property before calling `setState()`.
+
+When a widget is removed from the tree:
+- mounted = false
+- setState() calls are ignored
+- No error is thrown
+
+════════════════════════════════════════════════════════════════════════════════
+
+CODE CHANGES:
+═════════════
+
+BEFORE (❌ BUGGY):
+──────────────────
+Future<void> _fetchDashboardData() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    final data = await _apiService.fetchDashboardData();
+    setState(() {  // ❌ Can be called after dispose
+      _currentData = data;
+      _isLoading = false;
+    });
+  } catch (e) {
+    setState(() {  // ❌ Can be called after dispose
+      _errorMessage = e.toString();
+      _isLoading = false;
+    });
+    // ... rest of code
+  }
+}
+
+AFTER (✅ FIXED):
+─────────────────
+Future<void> _fetchDashboardData() async {
+  if (!mounted) return;  // ✅ Early return if disposed
+
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    final data = await _apiService.fetchDashboardData();
+
+    if (!mounted) return;  // ✅ Early return if disposed
+
+    setState(() {
+      _currentData = data;
+      _isLoading = false;
+    });
+  } catch (e) {
+    if (!mounted) return;  // ✅ Early return if disposed
+
+    setState(() {
+      _errorMessage = e.toString();
+      _isLoading = false;
+    });
+    // ... rest of code
+  }
+}
+
+════════════════════════════════════════════════════════════════════════════════
+
+KEY POINTS:
+════════════
+
+1. CHECK MOUNTED BEFORE setState()
+   - mounted is a boolean property of State
+   - mounted = true: widget is in widget tree
+   - mounted = false: widget has been disposed
+
+2. EARLY RETURN PATTERN
+   if (!mounted) return;  // Safety check
+   setState(() { ... });  // Safe to call
+
+3. TIMING IS CRITICAL
+   - Check mounted immediately after async operation
+   - API response can take seconds
+   - User might navigate away during that time
+
+4. PREVENTS MEMORY LEAKS
+   - Avoids keeping disposed widgets in memory
+   - Prevents unnecessary state updates
+   - Cleans up resources properly
+
+════════════════════════════════════════════════════════════════════════════════
+
+BEST PRACTICE PATTERN:
+══════════════════════
+
+For ANY async operation in StatefulWidget:
+
+Future<void> myAsyncMethod() async {
+  if (!mounted) return;  // ✅ First check
+
+  setState(() { /* ... */ });  // Initial state
+
+  try {
+    final result = await someAsyncOperation();
+
+    if (!mounted) return;  // ✅ Check before setState
+    setState(() { /* ... */ });
+
+  } catch (e) {
+    if (!mounted) return;  // ✅ Check in error handler
+    setState(() { /* ... */ });
+  }
+}
+
+════════════════════════════════════════════════════════════════════════════════
+
+WHERE THIS FIX WAS APPLIED:
+═══════════════════════════
+
+File: lib/presentation/screens/home/home_screen.dart
+Method: _fetchDashboardData()
+Lines: 42-85
+
+Three `mounted` checks were added:
+1. At the start of the method
+2. After API call completes (before setState)
+3. In catch block (before setState)
+
+════════════════════════════════════════════════════════════════════════════════
+
+TESTING THE FIX:
+═════════════════
+
+To verify the fix works:
+
+1. Open the app
+2. HomeScreen should display with mock data
+3. Navigate to another screen within 2 seconds (before API response)
+4. Go back to HomeScreen
+5. ❌ BEFORE: Error in console
+6. ✅ AFTER: No error, clean navigation
+
+════════════════════════════════════════════════════════════════════════════════
+
+SIMILAR FIXES TO CHECK:
+════════════════════════
+
+If you have other screens with API calls, apply the same pattern:
+
+Common places:
+- Any async function that calls setState()
+- API calls in initState()
+- Network requests
+- Image loading
+- File operations
+
+Example screens to check:
+□ lib/presentation/screens/home/home_screen.dart ✅ FIXED
+□ Other screens with API calls
+
+════════════════════════════════════════════════════════════════════════════════
+
+ADDITIONAL IMPROVEMENTS:
+═════════════════════════
+
+If you want to add more robustness:
+
+1. Add Timeout
+   final data = await _apiService.fetchDashboardData()
+     .timeout(Duration(seconds: 10),
+       onTimeout: () => throw Exception('Timeout'));
+
+2. Add Retry Logic
+   int retries = 0;
+   while (retries < 3) {
+     try {
+       return await _apiService.fetchDashboardData();
+     } catch (e) {
+       retries++;
+       if (retries >= 3) rethrow;
+       await Future.delayed(Duration(seconds: 2));
+     }
+   }
+
+3. Add Loading Indicator
+   - Show CircularProgressIndicator while loading
+   - Replace mock data UI with loading skeleton
+
+════════════════════════════════════════════════════════════════════════════════
+
+SUMMARY:
+═════════
+
+✅ Issue: setState() called after dispose
+✅ Root Cause: Async operation completing after widget disposal
+✅ Solution: Check mounted before each setState()
+✅ Applied: In _fetchDashboardData() method
+✅ Result: No more errors when navigating away during API call
+
+Your app should now run without this error! 🚀
+
+════════════════════════════════════════════════════════════════════════════════

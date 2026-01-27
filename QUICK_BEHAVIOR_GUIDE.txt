@@ -1,0 +1,82 @@
+════════════════════════════════════════════════════════════════════════════════
+                         🎯 BEHAVIOR SUMMARY
+════════════════════════════════════════════════════════════════════════════════
+
+KEY CHANGES:
+═════════════
+
+OLD:
+  initState() → API call ONCE → Done
+  (Data only updated when app starts)
+
+NEW:
+  initState() → Load mock
+  didChangeDependencies() → API call EVERY TIME screen is visited ✅
+  _hasDataChanged() → Update UI ONLY if values changed ✅
+
+════════════════════════════════════════════════════════════════════════════════
+
+WHEN API IS CALLED:
+═════════════════════
+
+✅ App first opens
+✅ User navigates to HomeScreen
+✅ User comes back to HomeScreen from another screen
+✅ User taps retry button on error
+
+════════════════════════════════════════════════════════════════════════════════
+
+WHEN UI UPDATES:
+═════════════════
+
+✅ If any sensor value changed
+✅ If quality status changed
+✅ If pump status changed
+✅ If lastUpdated timestamp changed
+
+❌ If all values are exactly the same
+  → Only loading stops, no UI rebuild
+
+════════════════════════════════════════════════════════════════════════════════
+
+WHAT YOU'LL SEE:
+═════════════════
+
+User Action           What Happens
+──────────────────────────────────────────────────────────────
+App opens             Mock data visible → API call → Real data
+
+Tap another nav item  HomeScreen removed from view
+
+Tap Home again        Brief loading → API called again → Data updated
+
+Stay on Home for      No API calls (screen still visible)
+5 minutes
+
+Go to another screen  HomeScreen.dispose()
+and back again        API called again when returning
+
+════════════════════════════════════════════════════════════════════════════════
+
+THE CODE FLOW:
+════════════════
+
+1. didChangeDependencies()
+   ↓
+2. _fetchDashboardData()
+   ↓
+3. setState(loading = true) ← Shows loading
+   ↓
+4. await _apiService.fetchDashboardData()
+   ↓
+5. _hasDataChanged(newData)
+   ├─ TRUE: Update _currentData → setState() → UI updates ✅
+   └─ FALSE: Just setState(loading = false) → No rebuild ✅
+
+════════════════════════════════════════════════════════════════════════════════
+
+THAT'S IT! ✅
+
+Your API will always be called fresh and UI updates smartly!
+
+════════════════════════════════════════════════════════════════════════════════
