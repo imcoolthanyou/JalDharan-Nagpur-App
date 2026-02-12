@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/models/analytics_data.dart';
 import '../../../core/models/groundwater_data.dart';
 import '../../../core/services/dashboard_api_service.dart';
+import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
+import 'dart:developer' as developer;
 
 class AnalyticsScreen extends StatefulWidget {
   final GroundwaterData? groundwaterData;
@@ -40,8 +43,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       _groundwaterTrend = TrendData.mockGroundwaterTrends();
     }
 
-    // Start auto-refresh timer
+    // Initialize Socket.IO listener
+    Future.microtask(() {
+      final socketService = Provider.of<SocketService>(context, listen: false);
+      socketService.addSensorUpdateListener(_onSensorDataReceived);
+    });
+
+    // Start auto-refresh timer as fallback
     _startAutoRefresh();
+  }
+
+  /// Callback when Socket.IO receives new sensor data
+  void _onSensorDataReceived(Map<String, dynamic> data) {
+    developer.log('🔄 AnalyticsScreen received Socket update: $data');
+
+    try {
+      final newData = GroundwaterData.fromJson(data);
+
+      if (mounted) {
+        setState(() {
+          _currentData = newData;
+          _groundwaterTrend = _createGroundwaterTrendFromData(newData);
+        });
+        developer.log('✅ AnalyticsScreen UI updated with new socket data');
+      }
+    } catch (e) {
+      developer.log('❌ Error parsing socket data in AnalyticsScreen: $e');
+    }
   }
 
   /// Start the auto-refresh timer
@@ -56,10 +84,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   /// Fetch latest data from API
   Future<void> _fetchLatestData() async {
     if (!mounted) return;
-
-    setState(() {
-      _isLoading = true;
-    });
 
     try {
       final data = await _apiService.fetchDashboardData();
@@ -78,13 +102,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         _isLoading = false;
       });
 
-      debugPrint('Analytics API Error: $e');
+      developer.log('Analytics API Error: $e');
     }
   }
 
   @override
   void dispose() {
     _autoRefreshTimer.cancel();
+
+    // Remove socket listener
+    Future.microtask(() {
+      final socketService = Provider.of<SocketService>(context, listen: false);
+      socketService.removeSensorUpdateListener(_onSensorDataReceived);
+    });
+
     super.dispose();
   }
 

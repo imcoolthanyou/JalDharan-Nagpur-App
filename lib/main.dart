@@ -1,7 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/auth_service.dart';
+import 'core/services/socket_service.dart';
 import 'firebase_options.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/signup_screen.dart';
@@ -29,44 +31,58 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
+    final socketService = SocketService();
 
-    return MaterialApp(
-      title: 'Jal Dharan',
-      theme: AppTheme.lightTheme,
-      debugShowCheckedModeBanner: false,
-      home: StreamBuilder(
-        stream: authService.authStateChanges,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
+    return MultiProvider(
+      providers: [
+        // Socket Service Provider
+        ChangeNotifierProvider<SocketService>.value(value: socketService),
+      ],
+      child: MaterialApp(
+        title: 'Jal Dharan',
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+        home: StreamBuilder(
+          stream: authService.authStateChanges,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
 
-          if (snapshot.hasData) {
-            // User is logged in
-            return const MainNavigationScreen();
-          } else {
-            // User is not logged in
-            return const LoginScreen();
-          }
+            if (snapshot.hasData) {
+              // User is logged in - Initialize Socket.IO
+              Future.microtask(() {
+                final socketService = Provider.of<SocketService>(context, listen: false);
+                if (!socketService.isConnected && !socketService.isConnecting) {
+                  socketService.initSocket();
+                }
+              });
+
+              return const MainNavigationScreen();
+            } else {
+              // User is not logged in
+              return const LoginScreen();
+            }
+          },
+        ),
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/signup': (context) => const SignUpScreen(),
+          '/home': (context) => const MainNavigationScreen(),
+          '/rainwater_harvesting': (context) => const RainwaterHarvestingScreen(),
+          '/analytics': (context) => const AnalyticsScreen(),
+          '/water_hero': (context) => const WaterHeroScreen(),
+          '/knowledge_hub': (context) => const KnowledgeHubScreen(),
+          '/community_settings': (context) => const CommunitySettingsScreen(),
+          '/jal_shayak': (context) => const JalShayakScreen(),
+          '/notifications': (context) => const NotificationsScreen(),
+          '/map_grind': (context) => const MapGrindScreen(),
         },
       ),
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/signup': (context) => const SignUpScreen(),
-        '/home': (context) => const MainNavigationScreen(),
-        '/rainwater_harvesting': (context) => const RainwaterHarvestingScreen(),
-        '/analytics': (context) => const AnalyticsScreen(),
-        '/water_hero': (context) => const WaterHeroScreen(),
-        '/knowledge_hub': (context) => const KnowledgeHubScreen(),
-        '/community_settings': (context) => const CommunitySettingsScreen(),
-        '/jal_shayak': (context) => const JalShayakScreen(),
-        '/notifications': (context) => const NotificationsScreen(),
-        '/map_grind': (context) => const MapGrindScreen(),
-      },
     );
   }
 }

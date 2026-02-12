@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../../core/models/groundwater_data.dart';
 import '../../../core/services/dashboard_api_service.dart';
+import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/home_widgets.dart';
 import '../../widgets/animated_gradient_background.dart';
 import '../analytics/analytics_screen.dart';
 import '../rainwater_harvesting/rainwater_harvesting_screen.dart';
+import 'dart:developer' as developer;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -26,7 +29,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _currentData = GroundwaterData.mockCurrentData();
+
+    // Initialize Socket.IO
+    Future.microtask(() {
+      final socketService = Provider.of<SocketService>(context, listen: false);
+      if (!socketService.isConnected && !socketService.isConnecting) {
+        socketService.initSocket();
+      }
+      // Add listener for sensor updates
+      socketService.addSensorUpdateListener(_onSensorDataReceived);
+    });
+
+    // Also keep HTTP polling as fallback
     _startAutoRefresh();
+  }
+
+  /// Callback when Socket.IO receives new sensor data
+  void _onSensorDataReceived(Map<String, dynamic> data) {
+    developer.log('🔄 HomeScreen received Socket update: $data');
+
+    try {
+      final newData = GroundwaterData.fromJson(data);
+
+      if (mounted && _hasDataChanged(newData)) {
+        setState(() {
+          _currentData = newData;
+        });
+        developer.log('✅ HomeScreen UI updated with new socket data');
+      }
+    } catch (e) {
+      developer.log('❌ Error parsing socket data: $e');
+    }
   }
 
   void _startAutoRefresh() {
@@ -45,10 +78,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _fetchDashboardData() async {
     if (!mounted) return;
-
-    setState(() {
-      _isLoading = true;
-    });
 
     try {
       final data = await _apiService.fetchDashboardData();
@@ -72,7 +101,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _isLoading = false;
       });
 
-      debugPrint('Dashboard API Error: $e');
+      // Only log errors, don't show them in UI
+      developer.log('Dashboard API Error: $e');
     }
   }
 
@@ -101,6 +131,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _autoRefreshTimer.cancel();
+
+    // Remove socket listener
+    Future.microtask(() {
+      final socketService = Provider.of<SocketService>(context, listen: false);
+      socketService.removeSensorUpdateListener(_onSensorDataReceived);
+    });
+
     super.dispose();
   }
 
