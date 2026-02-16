@@ -4,7 +4,7 @@ class ApiConfig {
   // Example: http://192.168.1.10:8000 (WebSocket connects automatically)
   // Or: http://10.0.2.2:8000 (for Android emulator localhost)
   // Or: http://localhost:8000 (for iOS simulator on Mac)
-  static const String baseUrl = 'http://192.168.1.10:8000';
+  static const String baseUrl = 'http://10.205.142.219:8000';
 
   // Dashboard endpoints
   static const String dashboardEndpoint = '$baseUrl/mobile/dashboard';
@@ -25,16 +25,21 @@ class ApiConfig {
   // The SocketService automatically connects to:
   // WebSocket: ws://{baseUrl}
   //
-  // Backend Socket.IO Server should emit 'sensor_update' event with payload:
+  // Backend Socket.IO Server emits 'sensor_update' event with RAW SENSOR DATA ONLY:
   // {
-  //   "timestamp": "...",
-  //   "sensor_data": {...},
-  //   "water_quality": {...},
-  //   "motor_load": {...},
-  //   "water_extraction": {...},
-  //   "groundwater_trend": {...},
-  //   "weather_data": {...}
+  //   "water_depth_m": double,
+  //   "flow_rate_L_min": double,
+  //   "tds_value": double,
+  //   "pump_current_amps": double,
+  //   "voltage": double,
+  //   "ph": double,
+  //   "timestamp": string (ISO format)
   // }
+  //
+  // This is the LIVE/REAL-TIME sensor data stream.
+  // Calculated data (water_quality, motor_load, groundwater_trend, weather_data)
+  // comes from the REST endpoint /mobile/dashboard which should be called
+  // periodically (every 5-10 seconds) to get the full calculated data.
   //
   // See SOCKET_IO_INTEGRATION.txt for complete documentation
 }

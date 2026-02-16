@@ -45,20 +45,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Callback when Socket.IO receives new sensor data
+  /// Socket.IO only sends RAW SENSOR DATA:
+  /// { water_depth_m, flow_rate_L_min, tds_value, ph, voltage, pump_current_amps, timestamp }
+  ///
+  /// We merge this with existing calculated data from REST API
   void _onSensorDataReceived(Map<String, dynamic> data) {
-    developer.log('🔄 HomeScreen received Socket update: $data');
+    developer.log('🔄 HomeScreen received Socket sensor update: $data');
 
     try {
-      final newData = GroundwaterData.fromJson(data);
+      // Merge raw sensor data with existing calculated data
+      final updatedData = _currentData.mergeWithSensorUpdate(data);
 
-      if (mounted && _hasDataChanged(newData)) {
+      if (mounted && _hasDataChanged(updatedData)) {
         setState(() {
-          _currentData = newData;
+          _currentData = updatedData;
         });
-        developer.log('✅ HomeScreen UI updated with new socket data');
+        developer.log('✅ HomeScreen UI updated with fresh sensor values from Socket');
       }
     } catch (e) {
-      developer.log('❌ Error parsing socket data: $e');
+      developer.log('❌ Error updating with socket sensor data: $e');
     }
   }
 

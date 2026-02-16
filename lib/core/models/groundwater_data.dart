@@ -135,6 +135,79 @@ class GroundwaterData {
     );
   }
 
+  /// Factory to parse RAW SENSOR DATA from Socket.IO sensor_update event
+  /// This ONLY contains raw sensor values, not calculated data
+  /// For complete data, use fromJson() with /mobile/dashboard response
+  factory GroundwaterData.fromSensorUpdate(Map<String, dynamic> json) {
+    final currentDepth = (json['water_depth_m'] ?? 0.0).toDouble();
+    final totalDepth = 50.0;
+
+    return GroundwaterData(
+      currentDepth: currentDepth,
+      totalDepth: totalDepth,
+      flowRate: (json['flow_rate_L_min'] ?? 0.0).toDouble(),
+      remainingPercentage: '${((1 - (currentDepth / totalDepth)) * 100).toStringAsFixed(1)}%',
+      qualityScore: 0.0, // Will be updated from REST API
+      qualityStatus: 'Loading...', // Will be updated from REST API
+      currentSession: 0.0, // Will be updated from REST API
+      estimatedExtraction: 0.0, // Will be updated from REST API
+      tdsLevel: (json['tds_value'] ?? 0.0).toDouble(),
+      tdsStatus: 'Safe',
+      phLevel: (json['ph'] ?? 7.0).toDouble(),
+      phStatus: 'Balanced',
+      voltage: (json['voltage'] ?? 0.0).toDouble(),
+      current: (json['pump_current_amps'] ?? 0.0).toDouble(),
+      motorStatus: 'Unknown', // Will be updated from REST API
+      extractionRate: (json['flow_rate_L_min'] ?? 0.0).toDouble(),
+      extractionStatus: 'Active',
+      lastUpdated: json['timestamp'] ?? DateTime.now().toString(),
+      // These will be updated from REST API
+      predictedDepth7Days: 0.0,
+      predictedDepth14Days: 0.0,
+      predictedDepth30Days: 0.0,
+      trend30Days: 'stable',
+      waterStressLevel: 'low',
+    );
+  }
+
+  /// Merge raw sensor data from Socket.IO with calculated data from REST API
+  /// This keeps sensor values fresh from Socket while preserving calculated data
+  GroundwaterData mergeWithSensorUpdate(Map<String, dynamic> sensorData) {
+    final currentDepth = (sensorData['water_depth_m'] ?? this.currentDepth).toDouble();
+    final totalDepth = this.totalDepth;
+
+    return GroundwaterData(
+      currentDepth: currentDepth,
+      totalDepth: totalDepth,
+      flowRate: (sensorData['flow_rate_L_min'] ?? this.flowRate).toDouble(),
+      remainingPercentage: '${((1 - (currentDepth / totalDepth)) * 100).toStringAsFixed(1)}%',
+      qualityScore: this.qualityScore,
+      qualityStatus: this.qualityStatus,
+      currentSession: this.currentSession,
+      estimatedExtraction: this.estimatedExtraction,
+      tdsLevel: (sensorData['tds_value'] ?? this.tdsLevel).toDouble(),
+      tdsStatus: this.tdsStatus,
+      phLevel: (sensorData['ph'] ?? this.phLevel).toDouble(),
+      phStatus: this.phStatus,
+      voltage: (sensorData['voltage'] ?? this.voltage).toDouble(),
+      current: (sensorData['pump_current_amps'] ?? this.current).toDouble(),
+      motorStatus: this.motorStatus,
+      extractionRate: (sensorData['flow_rate_L_min'] ?? this.extractionRate).toDouble(),
+      extractionStatus: this.extractionStatus,
+      lastUpdated: sensorData['timestamp'] ?? this.lastUpdated,
+      predictedDepth7Days: this.predictedDepth7Days,
+      predictedDepth14Days: this.predictedDepth14Days,
+      predictedDepth30Days: this.predictedDepth30Days,
+      trend30Days: this.trend30Days,
+      waterStressLevel: this.waterStressLevel,
+      weatherTemp: this.weatherTemp,
+      weatherCondition: this.weatherCondition,
+      weatherDescription: this.weatherDescription,
+      weatherIcon: this.weatherIcon,
+      rainAlert: this.rainAlert,
+    );
+  }
+
   // Mock data for Current Data tab
   static GroundwaterData mockCurrentData() {
     return GroundwaterData(

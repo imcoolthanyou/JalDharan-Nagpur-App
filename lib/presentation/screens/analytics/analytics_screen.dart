@@ -54,21 +54,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   /// Callback when Socket.IO receives new sensor data
+  /// Socket.IO only sends RAW SENSOR DATA
+  /// We merge this with existing calculated data from REST API
   void _onSensorDataReceived(Map<String, dynamic> data) {
-    developer.log('🔄 AnalyticsScreen received Socket update: $data');
+    developer.log('🔄 AnalyticsScreen received Socket sensor update: $data');
 
     try {
-      final newData = GroundwaterData.fromJson(data);
+      // Merge raw sensor data with existing calculated data
+      final updatedData = _currentData.mergeWithSensorUpdate(data);
 
       if (mounted) {
         setState(() {
-          _currentData = newData;
-          _groundwaterTrend = _createGroundwaterTrendFromData(newData);
+          _currentData = updatedData;
+          _groundwaterTrend = _createGroundwaterTrendFromData(updatedData);
         });
-        developer.log('✅ AnalyticsScreen UI updated with new socket data');
+        developer.log('✅ AnalyticsScreen UI updated with fresh sensor values from Socket');
       }
     } catch (e) {
-      developer.log('❌ Error parsing socket data in AnalyticsScreen: $e');
+      developer.log('❌ Error updating with socket sensor data in AnalyticsScreen: $e');
     }
   }
 

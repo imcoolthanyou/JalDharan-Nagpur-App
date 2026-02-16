@@ -93,60 +93,62 @@ class _MapGrindScreenState extends State<MapGrindScreen> {
                   children: [
                     TileLayer(
                       urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      // ✅ FIX: Added User Agent to satisfy OSM Policy
+                      userAgentPackageName: 'com.jal_dharan.app',
                       maxNativeZoom: 19,
                     ),
                     MarkerLayer(
                       markers: _members
                           .map(
                             (member) => Marker(
-                              point: LatLng(member.latitude, member.longitude),
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedMember = member;
-                                  });
-                                  // Animate to marker
-                                  _mapController.move(
-                                    LatLng(member.latitude, member.longitude),
-                                    9.5,
-                                  );
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _selectedMember?.name == member.name
-                                        ? AppColors.deepAquiferBlue
-                                        : AppColors.tealStart,
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 3,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 8,
-                                        spreadRadius: 2,
-                                      ),
-                                    ],
+                          point: LatLng(member.latitude, member.longitude),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedMember = member;
+                              });
+                              // Animate to marker
+                              _mapController.move(
+                                LatLng(member.latitude, member.longitude),
+                                9.5,
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _selectedMember?.name == member.name
+                                    ? AppColors.deepAquiferBlue
+                                    : AppColors.tealStart,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 3,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
                                   ),
-                                  width: 50,
-                                  height: 50,
-                                  child: Center(
-                                    child: Text(
-                                      member.initials,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
+                                ],
+                              ),
+                              width: 50,
+                              height: 50,
+                              child: Center(
+                                child: Text(
+                                  member.initials,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ),
-                          )
+                          ),
+                        ),
+                      )
                           .toList(),
                     ),
                   ],
